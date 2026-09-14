@@ -130,14 +130,12 @@ export class MachineLearningRepository {
   private async check(url: string) {
     let isHealthy = false;
     try {
-      const ping_url = new URL('ping', url);
-      const response = await fetch(ping_url, {
+      const response = await fetch(new URL('ping', url), {
         signal: AbortSignal.timeout(this.config.availabilityChecks.timeout),
       });
       if (response.ok) {
         isHealthy = true;
       }
-      response.body?.cancel();
     } catch {
       // nothing to do here
     }
@@ -170,8 +168,7 @@ export class MachineLearningRepository {
       ...this.config.urls.filter((url) => !this.isHealthy(url)),
     ]) {
       try {
-        const predict_url = new URL('predict', url);
-        const response = await fetch(predict_url, { method: 'POST', body: formData });
+        const response = await fetch(new URL('predict', url), { method: 'POST', body: formData });
         if (response.ok) {
           this.setHealthy(url, true);
           return response.json();
@@ -180,7 +177,6 @@ export class MachineLearningRepository {
         this.logger.warn(
           `Machine learning request to "${url}" failed with status ${response.status}: ${response.statusText}`,
         );
-        await response.body.cancel(); 
       } catch (error: Error | unknown) {
         this.logger.warn(`Machine learning request to "${url}" failed`, error);
       }
@@ -235,12 +231,11 @@ export class MachineLearningRepository {
 
     if ('imagePath' in payload) {
       const fileBuffer = await readFile(payload.imagePath);
-      const blob = new Blob([fileBuffer]);
-      formData.append('image', blob);
+      formData.append('image', new Blob([new Uint8Array(fileBuffer)]));
     } else if ('text' in payload) {
       formData.append('text', payload.text);
     } else {
-      throw new TypeError('getFormData Invalid input: payload must contain either "imagePath" or "text"');
+      throw new Error('Invalid input');
     }
 
     return formData;
